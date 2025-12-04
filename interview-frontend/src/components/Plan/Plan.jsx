@@ -1,101 +1,120 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
-  addProcedureToPlan,
-  getPlanProcedures,
-  getProcedures,
-  getUsers,
+    addProcedureToPlan,
+    getPlanProcedures,
+    getProcedures,
+    getUsers,
+    getUsersByProcedure, // updated API call
 } from "../../api/api";
-import Layout from '../Layout/Layout';
+import Layout from "../Layout/Layout";
 import ProcedureItem from "./ProcedureItem/ProcedureItem";
 import PlanProcedureItem from "./PlanProcedureItem/PlanProcedureItem";
 
 const Plan = () => {
-  let { id } = useParams();
-  const [procedures, setProcedures] = useState([]);
-  const [planProcedures, setPlanProcedures] = useState([]);
-  const [users, setUsers] = useState([]);
+    const { id } = useParams();
+    const [procedures, setProcedures] = useState([]);
+    const [planProcedures, setPlanProcedures] = useState([]);
+    const [users, setUsers] = useState([]);
 
-  useEffect(() => {
-    (async () => {
-      var procedures = await getProcedures();
-      var planProcedures = await getPlanProcedures(id);
-      var users = await getUsers();
+    useEffect(() => {
+        (async () => {
+            const proceduresData = await getProcedures();
+            const planProceduresData = await getPlanProcedures(id);
+            const usersData = await getUsers();
 
-      var userOptions = [];
-      users.map((u) => userOptions.push({ label: u.name, value: u.userId }));
+            // Convert users to select options
+            const userOptions = usersData.map((u) => ({
+                label: u.name,
+                value: u.userId,
+            }));
+            setUsers(userOptions);
+            setProcedures(proceduresData);
 
-      setUsers(userOptions);
-      setProcedures(procedures);
-      setPlanProcedures(planProcedures);
-    })();
-  }, [id]);
+            // Load assigned users for each plan procedure
+            const planProceduresWithUsers = await Promise.all(
+                planProceduresData.map(async (pp) => {
+                    const assignedUsersData = await getUsersByProcedure(pp.id);
+                    const selectedUsers = assignedUsersData.map((u) => ({
+                        label: u.user.name,
+                        value: u.userId,
+                    }));
+                    return { ...pp, assignedUsers: selectedUsers };
+                })
+            );
 
-  const handleAddProcedureToPlan = async (procedure) => {
-    const hasProcedureInPlan = planProcedures.some((p) => p.procedureId === procedure.procedureId);
-    if (hasProcedureInPlan) return;
+            setPlanProcedures(planProceduresWithUsers);
+        })();
+    }, [id]);
 
-    await addProcedureToPlan(id, procedure.procedureId);
-    setPlanProcedures((prevState) => {
-      return [
-        ...prevState,
-        {
-          planId: id,
-          procedureId: procedure.procedureId,
-          procedure: {
-            procedureId: procedure.procedureId,
-            procedureTitle: procedure.procedureTitle,
-          },
-        },
-      ];
-    });
-  };
+    const handleAddProcedureToPlan = async (procedure) => {
+        const exists = planProcedures.some((p) => p.procedureId === procedure.procedureId);
+        if (exists) return;
 
-  return (
-    <Layout>
-      <div className="container pt-4">
-        <div className="d-flex justify-content-center">
-          <h2>OEC Interview Frontend</h2>
-        </div>
-        <div className="row mt-4">
-          <div className="col">
-            <div className="card shadow">
-              <h5 className="card-header">Repair Plan</h5>
-              <div className="card-body">
-                <div className="row">
-                  <div className="col">
-                    <h4>Procedures</h4>
-                    <div>
-                      {procedures.map((p) => (
-                        <ProcedureItem
-                          key={p.procedureId}
-                          procedure={p}
-                          handleAddProcedureToPlan={handleAddProcedureToPlan}
-                          planProcedures={planProcedures}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="col">
-                    <h4>Added to Plan</h4>
-                    <div>
-                      {planProcedures.map((p) => (
-                        <PlanProcedureItem
-                          key={p.procedure.procedureId}
-                          procedure={p.procedure}
-                          users={users}
-                        />
-                      ))}
-                    </div>
-                  </div>
+        await addProcedureToPlan(id, procedure.procedureId);
+        setPlanProcedures((prev) => [
+            ...prev,
+            {
+                planId: id,
+                procedureId: procedure.procedureId,
+                id: null, // backend will assign Id
+                procedure: {
+                    id: procedure.id,
+                    procedureId: procedure.procedureId,
+                    procedureTitle: procedure.procedureTitle,
+                },
+                assignedUsers: [],
+            },
+        ]);
+    };
+
+    return (
+        <Layout>
+            <div className="container pt-4">
+                <div className="d-flex justify-content-center">
+                    <h2>OEC Interview Frontend</h2>
                 </div>
-              </div>
+                <div className="row mt-4">
+                    <div className="col">
+                        <div className="card shadow">
+                            <h5 className="card-header">Repair Plan</h5>
+                            <div className="card-body">
+                                <div className="row">
+                                    <div className="col">
+                                        <h4>Procedures</h4>
+                                        <div>
+                                            {procedures.map((p) => (
+                                                <ProcedureItem
+                                                    key={p.procedureId}
+                                                    procedure={p}
+                                                    handleAddProcedureToPlan={handleAddProcedureToPlan}
+                                                    planProcedures={planProcedures}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="col">
+                                        <h4>Added to Plan</h4>
+                                        <div>
+                                            {planProcedures.map((p) => (
+                                                <PlanProcedureItem
+                                                    key={p.procedure.procedureId}
+                                                    procedure={p.procedure}
+                                                    users={users}
+                                                    assignedUsers={p.assignedUsers} // pass selected users
+                                                    planProcedureId={p.id} // needed for assign/remove calls
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </Layout>
-  );
+        </Layout>
+    );
 };
 
 export default Plan;

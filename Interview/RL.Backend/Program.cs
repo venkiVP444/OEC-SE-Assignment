@@ -5,27 +5,30 @@ using MediatR;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services to the container
 builder.Services.AddMediatR(typeof(Program));
 builder.Services.AddSqlite<RLContext>("Data Source=Database.db");
 builder.Services.AddControllers()
     .AddOData(options => options.Select().Filter().Expand().OrderBy())
     .AddJsonOptions(options => options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase);
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.OperationFilter<EnableQueryFiler>();
 });
+
 var corsPolicy = "allowLocal";
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: corsPolicy,
-    policy =>
+    options.AddPolicy(name: corsPolicy, policy =>
     {
-        policy.WithOrigins("http://localhost:3001").AllowAnyHeader().AllowAnyMethod();
+        policy.WithOrigins("http://localhost:3000") // your frontend
+              .AllowAnyHeader()
+              .AllowAnyMethod();
     });
 });
+
+builder.WebHost.UseUrls("http://localhost:10010");
 
 var app = builder.Build();
 
@@ -36,7 +39,6 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty;
 });
 
-app.UseHttpsRedirection();
 
 app.UseCors(corsPolicy);
 

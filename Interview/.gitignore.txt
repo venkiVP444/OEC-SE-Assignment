@@ -1,0 +1,16 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.cache
+*.pdb
+*.log
+
+# Node / React
+node_modules/
+build/
+dist/
+
+# OS files
+Thumbs.db
+.DS_Store

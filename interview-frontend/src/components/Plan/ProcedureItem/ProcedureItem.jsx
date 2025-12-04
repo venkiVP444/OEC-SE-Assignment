@@ -1,24 +1,20 @@
 import React from "react";
 
 const ProcedureItem = ({ procedure, handleAddProcedureToPlan, planProcedures }) => {
+    const isChecked = planProcedures.some(p => p.procedureId === procedure.procedureId);
+    const checkboxId = `procedureCheckbox-${procedure.procedureId}`; // unique id
+
     return (
         <div className="py-2">
             <div className="form-check">
                 <input
                     className="form-check-input"
                     type="checkbox"
-                    value=""
-                    id="procedureCheckbox"
-                    checked={
-                        planProcedures.find(
-                            (p) => p.procedureId === procedure.procedureId
-                        )
-                            ? true
-                            : false
-                    }
+                    id={checkboxId}
+                    checked={isChecked}
                     onChange={() => handleAddProcedureToPlan(procedure)}
-                ></input>
-                <label className="form-check-label" htmlFor="procedureCheckbox">
+                />
+                <label className="form-check-label" htmlFor={checkboxId}>
                     {procedure.procedureTitle}
                 </label>
             </div>
